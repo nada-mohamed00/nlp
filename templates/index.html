@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HireSmart NLP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="logo">HS</div>
+            <div>
+                <h1>HireSmart NLP</h1>
+                <p>Resume screening and candidate ranking</p>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <form method="POST" enctype="multipart/form-data" class="card">
+            <div class="field">
+                <label for="job_description">Job Description</label>
+                <textarea id="job_description" name="job_description" rows="8" placeholder="Paste the job description here...">{{ job_description }}</textarea>
+            </div>
+
+            <div class="field">
+                <label for="resumes">Upload Resumes</label>
+                <input type="file" id="resumes" name="resumes" multiple accept=".pdf,.docx,.txt">
+                <small>Accepts PDF, DOCX, and TXT. Multiple files allowed.</small>
+            </div>
+
+            {% if error %}
+                <div class="error">{{ error }}</div>
+            {% endif %}
+
+            <button type="submit">Rank Candidates</button>
+        </form>
+
+        {% if results %}
+        <section class="results">
+            <h2>Ranked Candidates ({{ results|length }})</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Candidate</th>
+                        <th>Contact</th>
+                        <th>Matched Skills</th>
+                        <th>All Skills</th>
+                        <th>Match Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for r in results %}
+                    <tr>
+                        <td class="rank">{{ loop.index }}</td>
+                        <td>
+                            <div class="name">{{ r.name or r.filename }}</div>
+                            <div class="file">{{ r.filename }}</div>
+                        </td>
+                        <td>
+                            <div>{{ r.email or "—" }}</div>
+                            <div class="muted">{{ r.phone or "—" }}</div>
+                        </td>
+                        <td>
+                            {% if r.matched_skills %}
+                                {% for s in r.matched_skills %}
+                                    <span class="skill matched">{{ s }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for s in r.skills %}
+                                <span class="skill">{{ s }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <div class="bar">
+                                <div class="fill" style="width: {{ r.score }}%"></div>
+                                <span>{{ r.score }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        {% endif %}
+    </main>
+
+    <footer>
+        <p>Built with SpaCy, Sentence Transformers, and Flask</p>
+    </footer>
+</body>
+</html>
