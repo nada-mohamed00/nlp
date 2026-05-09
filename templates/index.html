@@ -1,98 +1,394 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HireSmart NLP</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HireSmart NLP</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f14;
+      --bg2: #13161d;
+      --bg3: #1a1e28;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --teal: #14b8a6;
+    }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; min-height: 100vh; }
+
+    header {
+      background: var(--bg2);
+      border-bottom: 0.5px solid var(--border2);
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--teal));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: #fff; letter-spacing: 0.5px;
+    }
+    .brand-text h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+    .brand-text p { font-size: 12px; color: var(--muted); }
+    .header-stats { display: flex; gap: 1.5rem; }
+    .hstat { text-align: right; }
+    .hstat-val { font-size: 18px; font-weight: 600; color: var(--accent2); }
+    .hstat-label { font-size: 11px; color: var(--muted); }
+
+    main { display: grid; grid-template-columns: 340px 1fr; height: calc(100vh - 64px); overflow: hidden; }
+
+    .sidebar {
+      background: var(--bg2);
+      border-right: 0.5px solid var(--border2);
+      padding: 1.5rem;
+      display: flex; flex-direction: column; gap: 1.25rem;
+      overflow-y: auto;
+    }
+    .section-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+
+    .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    .field textarea {
+      width: 100%; background: var(--bg3); border: 0.5px solid var(--border2);
+      border-radius: 10px; padding: 12px; color: var(--text); font-size: 13px;
+      resize: vertical; outline: none; transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .field textarea:focus { border-color: var(--accent); }
+    .field textarea::placeholder { color: var(--muted); }
+
+    .upload-zone {
+      background: var(--bg3); border: 1.5px dashed var(--border2);
+      border-radius: 10px; padding: 20px; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover { border-color: var(--accent); background: #1e2033; }
+    .upload-zone i { font-size: 28px; color: var(--accent2); display: block; margin-bottom: 8px; }
+    .upload-zone p { font-size: 13px; color: var(--muted); }
+    .upload-zone span { font-size: 11px; color: var(--muted); opacity: 0.6; margin-top: 4px; display: block; }
+    .upload-zone input { display: none; }
+
+    .file-list { display: flex; flex-direction: column; gap: 6px; }
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg3); border: 0.5px solid var(--border);
+      border-radius: 8px; padding: 8px 10px; font-size: 12px;
+    }
+    .file-item i { color: var(--accent2); font-size: 15px; }
+    .file-name { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-size { color: var(--muted); font-size: 11px; }
+    .file-remove { color: var(--muted); cursor: pointer; transition: color 0.2s; }
+    .file-remove:hover { color: var(--red); }
+
+    .btn-rank {
+      width: 100%; padding: 13px; border-radius: 10px;
+      background: var(--accent); border: none; color: #fff;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-rank:hover { opacity: 0.9; }
+    .btn-rank:active { transform: scale(0.98); }
+
+    .error { background: rgba(239,68,68,0.12); border: 0.5px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #fca5a5; }
+
+    .results-panel { overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    .results-header { display: flex; align-items: center; justify-content: space-between; }
+    .results-header h2 { font-size: 16px; font-weight: 600; color: var(--text); }
+    .results-count { font-size: 12px; color: var(--muted); background: var(--bg3); padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--border2); }
+
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 6px 14px; border-radius: 20px; font-size: 12px; border: 0.5px solid var(--border2);
+      background: var(--bg3); color: var(--muted); cursor: pointer; transition: all 0.2s;
+    }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .candidate-card {
+      background: var(--bg2); border: 0.5px solid var(--border2);
+      border-radius: 14px; padding: 1.25rem; display: grid;
+      grid-template-columns: 44px 1fr auto; gap: 14px; align-items: start;
+      transition: border-color 0.2s;
+    }
+    .candidate-card:hover { border-color: var(--accent); }
+    .candidate-card.rank-1 { border-color: #f59e0b66; background: #1a170066; }
+    .candidate-card.rank-2 { border-color: #9ca3af44; }
+    .candidate-card.rank-3 { border-color: #cd7f3244; }
+
+    .avatar {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 15px; flex-shrink: 0;
+    }
+    .rank-1 .avatar { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .rank-2 .avatar { background: rgba(148,163,184,0.12); color: #94a3b8; }
+    .rank-3 .avatar { background: rgba(205,127,50,0.12); color: #cd7f32; }
+    .av-default { background: rgba(99,102,241,0.15); color: var(--accent2); }
+
+    .cand-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .cand-file { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .cand-contact { display: flex; gap: 12px; margin-bottom: 10px; }
+    .cand-contact span { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+    .cand-contact i { font-size: 13px; }
+
+    .skills-row { display: flex; flex-wrap: wrap; gap: 5px; }
+    .skill {
+      font-size: 11px; padding: 3px 9px; border-radius: 20px;
+      background: var(--bg3); border: 0.5px solid var(--border);
+      color: var(--muted);
+    }
+    .skill.matched {
+      background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4);
+      color: var(--accent2); font-weight: 500;
+    }
+
+    .score-col { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 90px; }
+    .score-num { font-size: 22px; font-weight: 700; }
+    .score-label { font-size: 10px; color: var(--muted); }
+    .score-bar { width: 90px; height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 3px; }
+    .rank-badge {
+      width: 24px; height: 24px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .rb-1 { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .rb-2 { background: rgba(148,163,184,0.15); color: #94a3b8; }
+    .rb-3 { background: rgba(205,127,50,0.15); color: #cd7f32; }
+    .rb-n { background: var(--bg3); color: var(--muted); }
+
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; color: var(--muted); padding: 4rem 0;
+    }
+    .empty-state i { font-size: 48px; color: var(--border2); }
+    .empty-state p { font-size: 14px; }
+    .empty-state small { font-size: 12px; opacity: 0.7; }
+
+    footer {
+      position: fixed; bottom: 0; right: 0;
+      padding: 8px 16px; font-size: 11px; color: var(--muted);
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
-    <header>
-        <div class="brand">
-            <div class="logo">HS</div>
-            <div>
-                <h1>HireSmart NLP</h1>
-                <p>Resume screening and candidate ranking</p>
-            </div>
+
+<header>
+  <div class="brand">
+    <div class="logo">HS</div>
+    <div class="brand-text">
+      <h1>HireSmart NLP</h1>
+      <p>Resume screening &amp; candidate ranking</p>
+    </div>
+  </div>
+  <div class="header-stats" id="hstats" style="display:none">
+    <div class="hstat">
+      <div class="hstat-val" id="stat-count">0</div>
+      <div class="hstat-label">Candidates</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-avg">—</div>
+      <div class="hstat-label">Avg. match</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="stat-top">—</div>
+      <div class="hstat-label">Top score</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="sidebar">
+    <div>
+      <div class="section-label">Job description</div>
+      <div class="field">
+        <label for="jd">Paste your job requirements</label>
+        <textarea id="jd" name="job_description" rows="9" placeholder="e.g. We are looking for a Senior Python Engineer with 5+ years of experience in Django, REST APIs, PostgreSQL, Docker and AWS…">{{ job_description }}</textarea>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Resumes</div>
+      <div class="upload-zone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <i class="ti ti-cloud-upload"></i>
+        <p>Drop CVs here or click to browse</p>
+        <span>PDF, DOCX, TXT — multiple files allowed</span>
+        <input type="file" id="fileInput" name="resumes" multiple accept=".pdf,.docx,.txt" onchange="handleFiles(this.files)">
+      </div>
+      <div class="file-list" id="fileList" style="margin-top:10px"></div>
+    </div>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <div id="errorBox" class="error" style="display:none"></div>
+
+    <button class="btn-rank" onclick="rankCandidates()">
+      <i class="ti ti-sparkles"></i>
+      Rank Candidates
+    </button>
+  </div>
+
+  <div class="results-panel" id="resultsPanel">
+
+    {% if results %}
+    <!-- Server-rendered results -->
+    <div class="results-header">
+      <h2>Ranked candidates</h2>
+      <span class="results-count">{{ results|length }} results</span>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" onclick="filterAll(this)">All</button>
+      <button class="filter-btn" onclick="filterScore(this, 80)">Strong match ≥80%</button>
+      <button class="filter-btn" onclick="filterScore(this, 60)">Good match ≥60%</button>
+    </div>
+    <div id="cardList">
+      {% for r in results %}
+      <div class="candidate-card {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}" data-score="{{ r.score }}">
+        <div class="avatar {% if loop.index > 3 %}av-default{% endif %}">
+          {{ (r.name or r.filename)[:2]|upper }}
         </div>
-    </header>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+            <span class="cand-name">{{ r.name or r.filename }}</span>
+            {% if loop.index == 1 %}<span class="rank-badge rb-1">1st</span>
+            {% elif loop.index == 2 %}<span class="rank-badge rb-2">2nd</span>
+            {% elif loop.index == 3 %}<span class="rank-badge rb-3">3rd</span>
+            {% else %}<span class="rank-badge rb-n">#{{ loop.index }}</span>{% endif %}
+          </div>
+          <div class="cand-file">{{ r.filename }}</div>
+          <div class="cand-contact">
+            {% if r.email %}<span><i class="ti ti-mail"></i>{{ r.email }}</span>{% endif %}
+            {% if r.phone %}<span><i class="ti ti-phone"></i>{{ r.phone }}</span>{% endif %}
+          </div>
+          <div class="skills-row">
+            {% for s in r.matched_skills %}<span class="skill matched">{{ s }}</span>{% endfor %}
+            {% for s in r.skills %}{% if s not in r.matched_skills %}<span class="skill">{{ s }}</span>{% endif %}{% endfor %}
+          </div>
+        </div>
+        <div class="score-col">
+          <div>
+            <div class="score-num" style="color:{% if r.score >= 80 %}#10b981{% elif r.score >= 60 %}#6366f1{% elif r.score >= 40 %}#f59e0b{% else %}#ef4444{% endif %}">{{ r.score }}%</div>
+            <div class="score-label">match score</div>
+          </div>
+          <div class="score-bar">
+            <div class="score-fill" style="width:{{ r.score }}%;background:{% if r.score >= 80 %}#10b981{% elif r.score >= 60 %}#6366f1{% elif r.score >= 40 %}#f59e0b{% else %}#ef4444{% endif %}"></div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
 
-    <main>
-        <form method="POST" enctype="multipart/form-data" class="card">
-            <div class="field">
-                <label for="job_description">Job Description</label>
-                <textarea id="job_description" name="job_description" rows="8" placeholder="Paste the job description here...">{{ job_description }}</textarea>
-            </div>
+    {% else %}
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <i class="ti ti-users"></i>
+      <p>No candidates ranked yet</p>
+      <small>Add a job description and upload resumes to get started</small>
+    </div>
+    {% endif %}
 
-            <div class="field">
-                <label for="resumes">Upload Resumes</label>
-                <input type="file" id="resumes" name="resumes" multiple accept=".pdf,.docx,.txt">
-                <small>Accepts PDF, DOCX, and TXT. Multiple files allowed.</small>
-            </div>
+  </div>
+</main>
 
-            {% if error %}
-                <div class="error">{{ error }}</div>
-            {% endif %}
+<footer>Built with SpaCy · Sentence Transformers · Flask</footer>
 
-            <button type="submit">Rank Candidates</button>
-        </form>
+<script>
+  let files = [];
 
-        {% if results %}
-        <section class="results">
-            <h2>Ranked Candidates ({{ results|length }})</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Candidate</th>
-                        <th>Contact</th>
-                        <th>Matched Skills</th>
-                        <th>All Skills</th>
-                        <th>Match Score</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for r in results %}
-                    <tr>
-                        <td class="rank">{{ loop.index }}</td>
-                        <td>
-                            <div class="name">{{ r.name or r.filename }}</div>
-                            <div class="file">{{ r.filename }}</div>
-                        </td>
-                        <td>
-                            <div>{{ r.email or "—" }}</div>
-                            <div class="muted">{{ r.phone or "—" }}</div>
-                        </td>
-                        <td>
-                            {% if r.matched_skills %}
-                                {% for s in r.matched_skills %}
-                                    <span class="skill matched">{{ s }}</span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="muted">—</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% for s in r.skills %}
-                                <span class="skill">{{ s }}</span>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            <div class="bar">
-                                <div class="fill" style="width: {{ r.score }}%"></div>
-                                <span>{{ r.score }}%</span>
-                            </div>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </section>
-        {% endif %}
-    </main>
+  const dropzone = document.getElementById('dropzone');
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = 'var(--accent)'; });
+  dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = ''; });
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.style.borderColor = '';
+    handleFiles(e.dataTransfer.files);
+  });
 
-    <footer>
-        <p>Built with SpaCy, Sentence Transformers, and Flask</p>
-    </footer>
+  function handleFiles(newFiles) {
+    for (const f of newFiles) {
+      if (!files.find(x => x.name === f.name)) files.push(f);
+    }
+    renderFileList();
+  }
+
+  function renderFileList() {
+    const list = document.getElementById('fileList');
+    list.innerHTML = files.map((f, i) => `
+      <div class="file-item">
+        <i class="ti ti-file-text"></i>
+        <span class="file-name">${f.name}</span>
+        <span class="file-size">${(f.size / 1024).toFixed(0)}kb</span>
+        <span class="file-remove" onclick="removeFile(${i})"><i class="ti ti-x"></i></span>
+      </div>
+    `).join('');
+  }
+
+  function removeFile(i) {
+    files.splice(i, 1);
+    renderFileList();
+  }
+
+  function rankCandidates() {
+    const jd = document.getElementById('jd').value.trim();
+    const errBox = document.getElementById('errorBox');
+    errBox.style.display = 'none';
+
+    if (!jd) { errBox.textContent = 'Please enter a job description.'; errBox.style.display = 'block'; return; }
+    if (!files.length) { errBox.textContent = 'Please upload at least one resume.'; errBox.style.display = 'block'; return; }
+
+    // Build FormData and POST to Flask backend
+    const formData = new FormData();
+    formData.append('job_description', jd);
+    files.forEach(f => formData.append('resumes', f));
+
+    const panel = document.getElementById('resultsPanel');
+    panel.innerHTML = `<div class="empty-state"><i class="ti ti-loader" style="animation:spin 1s linear infinite;font-size:40px"></i><p>Screening ${files.length} resume${files.length > 1 ? 's' : ''}…</p><small>Extracting skills and computing semantic similarity</small></div>`;
+
+    fetch('/', { method: 'POST', body: formData })
+      .then(r => r.text())
+      .then(html => {
+        // Replace the full page with the server response
+        document.open();
+        document.write(html);
+        document.close();
+      })
+      .catch(() => {
+        errBox.textContent = 'Something went wrong. Please try again.';
+        errBox.style.display = 'block';
+      });
+  }
+
+  function filterAll(btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#cardList .candidate-card').forEach(c => c.style.display = '');
+  }
+
+  function filterScore(btn, min) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#cardList .candidate-card').forEach(c => {
+      c.style.display = parseInt(c.dataset.score) >= min ? '' : 'none';
+    });
+  }
+</script>
 </body>
 </html>
