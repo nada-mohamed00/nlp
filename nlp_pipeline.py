@@ -1,9 +1,8 @@
 import re
 
-import numpy as np
 import spacy
 from spacy.matcher import PhraseMatcher
-from fastembed import TextEmbedding
+from sentence_transformers import SentenceTransformer, util
 from PyPDF2 import PdfReader
 from docx import Document
 
@@ -20,6 +19,7 @@ SKILLS = [
     "git", "linux", "bash", "rest api", "graphql", "grpc",
     "machine learning", "deep learning", "nlp", "computer vision",
     "tensorflow", "pytorch", "keras", "scikit-learn", "spacy", "nltk",
+    "huggingface", "sentence transformers", "openai", "langchain",
     "pandas", "numpy", "matplotlib", "seaborn", "plotly",
     "data analysis", "data visualization", "tableau", "power bi", "excel",
     "ci/cd", "agile", "scrum", "jira",
@@ -30,7 +30,7 @@ SKILLS = [
 nlp = spacy.load("en_core_web_sm")
 matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
 matcher.add("SKILLS", [nlp.make_doc(s) for s in SKILLS])
-embedder = TextEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 def read_pdf(file):
@@ -87,15 +87,7 @@ def extract_skills(text):
 
 
 def embed(texts):
-    return np.array(list(embedder.embed(texts)))
-
-
-def cosine(a, b):
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
+    return model.encode(texts, convert_to_tensor=True, normalize_embeddings=True)
 
 
 def rank_candidates(job_description, resumes):
@@ -115,7 +107,7 @@ def rank_candidates(job_description, resumes):
     for (filename, text), vec in zip(parsed, vectors[1:]):
         skills = extract_skills(text)
         matched = sorted(job_skills.intersection(skills)) if job_skills else []
-        text_score = cosine(job_vec, vec)
+        text_score = float(util.cos_sim(job_vec, vec)[0][0])
         skill_score = (len(matched) / len(job_skills)) if job_skills else 0.0
         score = 0.7 * text_score + 0.3 * skill_score
         results.append({
