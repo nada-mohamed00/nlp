@@ -1,7 +1,9 @@
 import re
+import math
+from collections import Counter
+
 import spacy
 from spacy.matcher import PhraseMatcher
-from sentence_transformers import SentenceTransformer, util
 from PyPDF2 import PdfReader
 from docx import Document
 
@@ -18,7 +20,6 @@ SKILLS = [
     "git", "linux", "bash", "rest api", "graphql", "grpc",
     "machine learning", "deep learning", "nlp", "computer vision",
     "tensorflow", "pytorch", "keras", "scikit-learn", "spacy", "nltk",
-    "huggingface", "sentence transformers", "openai", "langchain",
     "pandas", "numpy", "matplotlib", "seaborn", "plotly",
     "data analysis", "data visualization", "tableau", "power bi", "excel",
     "ci/cd", "agile", "scrum", "jira",
@@ -29,7 +30,6 @@ SKILLS = [
 nlp = spacy.load("en_core_web_sm")
 matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
 matcher.add("SKILLS", [nlp.make_doc(s) for s in SKILLS])
-model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 def read_pdf(file):
@@ -59,6 +59,11 @@ def clean_text(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
+def tokenize(text):
+    doc = nlp(text.lower())
+    return [t.lemma_ for t in doc if t.is_alpha and not t.is_stop and len(t.lemma_) > 1]
+
+
 def extract_name(text):
     doc = nlp(text[:600])
     for ent in doc.ents:
@@ -85,20 +90,53 @@ def extract_skills(text):
     return sorted(found)
 
 
-def similarity(job_text, resume_text):
-    embeddings = model.encode([job_text, resume_text], convert_to_tensor=True)
-    return float(util.cos_sim(embeddings[0], embeddings[1])[0][0])
+def compute_idf(token_lists):
+    n = len(token_lists)
+    df = Counter()
+    for tokens in token_lists:
+        for term in set(tokens):
+            df[term] += 1
+    return {term: math.log((n + 1) / (count + 1)) + 1 for term, count in df.items()}
+
+
+def tfidf_vector(tokens, idf):
+    counts = Counter(tokens)
+    total = sum(counts.values()) or 1
+    return {term: (count / total) * idf.get(term, 0.0) for term, count in counts.items()}
+
+
+def cosine(a, b):
+    if not a or not b:
+        return 0.0
+    shared = set(a).intersection(b)
+    dot = sum(a[k] * b[k] for k in shared)
+    norm_a = math.sqrt(sum(v * v for v in a.values()))
+    norm_b = math.sqrt(sum(v * v for v in b.values()))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
 
 
 def rank_candidates(job_description, resumes):
-    results = []
     job_clean = clean_text(job_description)
+    job_tokens = tokenize(job_clean)
     job_skills = set(extract_skills(job_clean))
+
+    parsed = []
     for filename, file in resumes:
         text = clean_text(parse_resume(file, filename))
+        parsed.append((filename, text, tokenize(text)))
+
+    idf = compute_idf([job_tokens] + [tokens for _, _, tokens in parsed])
+    job_vec = tfidf_vector(job_tokens, idf)
+
+    results = []
+    for filename, text, tokens in parsed:
         skills = extract_skills(text)
-        score = similarity(job_clean, text)
         matched = sorted(job_skills.intersection(skills)) if job_skills else []
+        text_score = cosine(job_vec, tfidf_vector(tokens, idf))
+        skill_score = (len(matched) / len(job_skills)) if job_skills else 0.0
+        score = 0.7 * text_score + 0.3 * skill_score
         results.append({
             "filename": filename,
             "name": extract_name(text),

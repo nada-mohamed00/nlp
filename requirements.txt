@@ -1,5 +1,4 @@
 Flask
 spacy
-sentence-transformers
 PyPDF2
 python-docx
